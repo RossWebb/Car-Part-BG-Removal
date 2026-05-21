@@ -6,6 +6,7 @@ from rembg import remove, new_session
 from PIL import Image
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk, colorchooser
+from tkinterdnd2 import TkinterDnD, DND_FILES
 import threading
 import time
 
@@ -83,7 +84,7 @@ def _silent_tqdm_init(original_init):
 
 class PartOutApp:
     def __init__(self):
-        self.root = tk.Tk()
+        self.root = TkinterDnD.Tk()
         self.root.title("Part-Out Cutter - Catalogue Edition")
         self.root.geometry("860x780")
         self.root.configure(bg="#0f172a")
@@ -117,7 +118,7 @@ class PartOutApp:
         tk.Label(self.root, text="Part-Out Cutter",
                  font=("Arial", 26, "bold"), fg="#60a5fa", bg="#0f172a"
                  ).pack(pady=(16, 2))
-        tk.Label(self.root, text="Catalogue Edition  •  AI Background Removal - R.Webb 2026",
+        tk.Label(self.root, text="Catalogue Edition  •  AI Background Removal  •  R.Webb 2026",
                  font=("Arial", 10), fg="#475569", bg="#0f172a"
                  ).pack(pady=(0, 8))
 
@@ -157,6 +158,23 @@ class PartOutApp:
                  font=("Consolas", 9), fg="#64748b", bg="#0f172a").pack(pady=(2, 0))
 
         # ── Settings panel ─────────────────────────────────────────────────
+        # ── Drop zone ──────────────────────────────────────────────────────
+        self.drop_zone = tk.Label(
+            self.root,
+            text="⬇   Drop images or a folder here   ⬇",
+            font=("Arial", 11, "bold"),
+            fg="#60a5fa",
+            bg="#162032",
+            relief="groove",
+            pady=12,
+            cursor="hand2",
+        )
+        self.drop_zone.pack(fill="x", padx=25, pady=(8, 0))
+        self.drop_zone.drop_target_register(DND_FILES)
+        self.drop_zone.dnd_bind("<<Drop>>", self._on_drop)
+        self.drop_zone.dnd_bind("<<DragEnter>>", self._on_drop_enter)
+        self.drop_zone.dnd_bind("<<DragLeave>>", self._on_drop_leave)
+
         self.setup_settings_panel()
 
         # ── Log ────────────────────────────────────────────────────────────
@@ -407,6 +425,56 @@ class PartOutApp:
             self.outdir_var.set(f"Output: {folder}")
             self.log(f"Output folder → {folder}")
 
+    def _parse_drop_paths(self, data: str) -> list:
+        """Parse tkinterdnd2 drop data into a list of path strings.
+        Paths with spaces are wrapped in curly braces by Windows DnD."""
+        paths = []
+        data = data.strip()
+        while data:
+            if data.startswith("{"):
+                end = data.index("}")
+                paths.append(data[1:end])
+                data = data[end + 1:].strip()
+            else:
+                parts = data.split(" ", 1)
+                paths.append(parts[0])
+                data = parts[1].strip() if len(parts) > 1 else ""
+        return paths
+
+    def _on_drop(self, event):
+        if self.processing:
+            messagebox.showwarning("Busy", "Already processing — please wait.")
+            return
+        if self.session is None:
+            messagebox.showwarning("Not ready", "Model is still loading — please wait.")
+            return
+
+        raw_paths = self._parse_drop_paths(event.data)
+        files = []
+
+        for raw in raw_paths:
+            p = Path(raw)
+            if p.is_dir():
+                files += [f for f in p.glob("*.*")
+                          if f.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}]
+            elif p.is_file() and p.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}:
+                files.append(p)
+
+        if not files:
+            messagebox.showinfo("No images",
+                                "No supported images found in the dropped items.\n"
+                                "Supported formats: jpg, jpeg, png, webp")
+            return
+
+        threading.Thread(target=self.start_processing,
+                         args=[files], daemon=True).start()
+
+    def _on_drop_enter(self, event):
+        self.drop_zone.configure(fg="#ffffff", bg="#1d4ed8")
+
+    def _on_drop_leave(self, event):
+        self.drop_zone.configure(fg="#60a5fa", bg="#162032")
+
     def select_files(self):
         if self.processing:
             messagebox.showwarning("Busy", "Already processing — please wait.")
@@ -499,12 +567,14 @@ class PartOutApp:
     def _disable_buttons(self):
         for b in (self.btn_files, self.btn_folder, self.btn_outdir):
             b.configure(state="disabled")
+        self.drop_zone.configure(fg="#334155", bg="#0f172a")
         self.status_var.set("⚙️  Processing…")
         self.status_label.configure(fg="#fbbf24")
 
     def _enable_buttons(self):
         for b in (self.btn_files, self.btn_folder, self.btn_outdir):
             b.configure(state="normal")
+        self.drop_zone.configure(fg="#60a5fa", bg="#162032")
         self.status_var.set("✅  Ready")
         self.status_label.configure(fg="#4ade80")
 
