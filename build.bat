@@ -27,7 +27,7 @@ echo.
 
 :: ── Install / upgrade PyInstaller ────────────────────────────────────────────
 echo [1/4] Installing PyInstaller...
-%PIP% install --upgrade pyinstaller >nul 2>&1
+%PIP% install --upgrade pyinstaller tkinterdnd2 >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Failed to install PyInstaller.
     pause
@@ -94,6 +94,8 @@ echo.
     --hidden-import "onnxruntime.capi.onnxruntime_pybind11_state" ^
     --collect-all "onnxruntime" ^
     --collect-all "rembg" ^
+    --collect-all "tkinterdnd2" ^
+    --hidden-import "tkinterdnd2" ^
     --collect-all "pooch" ^
     --collect-all "pymatting" ^
     --hidden-import "pooch" ^
