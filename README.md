@@ -13,6 +13,7 @@ Powered by [rembg](https://github.com/danielgatis/rembg) and [onnxruntime](https
 - Adjustable background removal settings with named presets
 - Alpha matting controls for fine edge detail
 - Optional solid background fill (with colour picker)
+- Drag and drop images or folders directly onto the app window
 - Saves output as PNG with transparency preserved
 - Configurable output folder
 
@@ -36,7 +37,7 @@ Powered by [rembg](https://github.com/danielgatis/rembg) and [onnxruntime](https
 - Dependencies:
 
 ```
-pip install rembg pillow onnxruntime tqdm pooch pymatting scikit-image scipy
+pip install rembg pillow onnxruntime tqdm pooch pymatting scikit-image scipy tkinterdnd2
 ```
 
 ### Run
@@ -108,6 +109,7 @@ Model weights are downloaded on demand and cached in `%USERPROFILE%\.u2net\`.
 
 ## Notes
 
+- Drag and drop accepts a mix of individual image files and folders in a single drop — folders are expanded automatically
 - Output files are saved as `originalname_nobg.png` alongside the source images, or in a chosen output folder
 - The app window may take several seconds to appear on first launch — PyInstaller is unpacking the bundled runtime
 - If the app fails to start, check `error.log` in the `PartOutCutter` folder for a full traceback
